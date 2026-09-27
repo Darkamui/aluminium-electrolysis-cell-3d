@@ -172,7 +172,7 @@ input[type=range]:disabled::-moz-range-thumb{background:var(--ink-3)}
 .src{margin:12px 0 0;font-size:11px;color:var(--ink-3);line-height:1.45}
 
 /* ---- viewport -------------------------------------------------------- */
-#stage{position:relative;min-width:0;background:
+#stage{position:relative;min-width:0;min-height:0;overflow:hidden;background:
   radial-gradient(120% 90% at 50% 0%,#22272c 0%,#15181b 70%)}
 #stage canvas{display:block;width:100%;height:100%}
 
@@ -647,7 +647,7 @@ function fitModel() {
   }
   controls.target.copy(centre);
   camera.position.copy(centre).addScaledVector(back, distance);
-  camera.far = Math.max(400, distance + bounds.getSize(new THREE.Vector3()).length);
+  camera.far = Math.max(400, distance + bounds.getSize(new THREE.Vector3()).length());
   camera.updateProjectionMatrix();
   controls.update();
 }

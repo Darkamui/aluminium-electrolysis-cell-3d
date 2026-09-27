@@ -536,6 +536,7 @@ const xVal = document.getElementById("x-val");
 ex.addEventListener("input", () => {
   const t = ex.value / 100;
   applyExplode(t);
+  fitModel();
   xVal.textContent = ex.value + "%";
   exVal.textContent = t === 0 ? "assembled" : t === 1 ? "full" : "separating";
 });
@@ -618,8 +619,37 @@ function setView(k) {
   camera.position.set(...v.pos);
   controls.target.set(...v.target);
   controls.update();
+  fitModel();
   document.querySelectorAll("#views button").forEach(b =>
     b.setAttribute("aria-pressed", String(b.dataset.view === k)));
+}
+function fitModel() {
+  if (!model) return;
+  model.updateMatrixWorld(true);
+  const bounds = new THREE.Box3().setFromObject(model);
+  if (bounds.isEmpty()) return;
+  const centre = bounds.getCenter(new THREE.Vector3());
+  const back = camera.position.clone().sub(controls.target).normalize();
+  const right = new THREE.Vector3().crossVectors(camera.up, back).normalize();
+  const up = new THREE.Vector3().crossVectors(back, right).normalize();
+  const tanV = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) / 1.15;
+  const tanH = tanV * camera.aspect;
+  let distance = 0;
+  for (const x of [bounds.min.x, bounds.max.x]) {
+    for (const y of [bounds.min.y, bounds.max.y]) {
+      for (const z of [bounds.min.z, bounds.max.z]) {
+        const corner = new THREE.Vector3(x, y, z).sub(centre);
+        distance = Math.max(distance,
+          Math.abs(corner.dot(right)) / tanH + corner.dot(back),
+          Math.abs(corner.dot(up)) / tanV + corner.dot(back));
+      }
+    }
+  }
+  controls.target.copy(centre);
+  camera.position.copy(centre).addScaledVector(back, distance);
+  camera.far = Math.max(400, distance + bounds.getSize(new THREE.Vector3()).length);
+  camera.updateProjectionMatrix();
+  controls.update();
 }
 document.querySelectorAll("#views button").forEach(b =>
   b.addEventListener("click", () => setView(b.dataset.view)));
@@ -700,6 +730,7 @@ function resize() {
   renderer.setSize(w, h, false);
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
+  fitModel();
 }
 addEventListener("resize", resize);
 resize();

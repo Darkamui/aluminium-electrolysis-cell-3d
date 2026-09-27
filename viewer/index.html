@@ -219,6 +219,10 @@ input[type=range]:disabled::-moz-range-thumb{background:var(--ink-3)}
   font-family:var(--mono);font-size:11px;letter-spacing:.14em;
   text-transform:uppercase;color:var(--ink-3);
 }
+#loading p{max-width:440px;margin:0;padding:0 24px;text-align:center;
+  font-family:var(--ui);font-size:14px;letter-spacing:normal;text-transform:none;
+  color:var(--ink-2)}
+#loading a{color:var(--accent)}
 #bar{width:180px;height:2px;background:var(--line);overflow:hidden}
 #bar i{display:block;height:100%;width:35%;background:var(--accent);
   animation:sweep 1.1s ease-in-out infinite}
@@ -331,9 +335,25 @@ input[type=range]:disabled::-moz-range-thumb{background:var(--ink-3)}
       <div id="dims"></div>
     </div>
 
-    <div id="loading"><span>Loading geometry</span><div id="bar"><i></i></div></div>
+    <div id="loading">
+      <span>Viewer template — no model embedded</span>
+      <p>Open <a href="../out/cuve400.html">out/cuve400.html</a>, or download the
+        viewer from the <a href="https://github.com/Darkamui/aluminium-electrolysis-cell-3d/releases/latest">latest release</a>.</p>
+      <p>To generate it, run <code>python tools/embed_glb.py</code> from the
+        repository root after exporting the model. Live Server is not required.</p>
+    </div>
   </div>
 </div>
+
+<script>
+// The build tool fills this slot. Keep the template useful even without CDN access.
+const b64 = "";
+if (b64) {
+  document.getElementById("loading").innerHTML =
+    '<span>Loading geometry</span><div id="bar"><i></i></div>' +
+    '<p>Internet access is required to load the viewer libraries.</p>';
+}
+</script>
 
 <script type="importmap">
 {"imports":{
@@ -439,7 +459,6 @@ const hi = new THREE.MeshStandardMaterial({
 });
 
 /* ---- load ------------------------------------------------------------ */
-const b64 = "";
 const bin = atob(b64);
 const buf = new Uint8Array(bin.length);
 for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
@@ -453,7 +472,7 @@ let model = null, exClip = null, exAction = null, exMixer = null;
 const bySub = new Map(SUBSYS.map(s => [s.key, []]));
 let selected = null, hovered = null;
 
-new GLTFLoader().parse(buf.buffer, "", (gltf) => {
+if (b64) new GLTFLoader().parse(buf.buffer, "", (gltf) => {
   const root = gltf.scene;
   let tris = 0;
 
@@ -508,6 +527,10 @@ new GLTFLoader().parse(buf.buffer, "", (gltf) => {
   buildLayers();
   setView("iso");
   document.getElementById("loading").remove();
+}, () => {
+  document.getElementById("loading").innerHTML =
+    '<span>Unable to load the embedded model</span>' +
+    '<p>Regenerate this page with python tools/embed_glb.py, or download a fresh copy from the release page.</p>';
 });
 
 /* ---- explosion ------------------------------------------------------- */

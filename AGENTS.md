@@ -1,5 +1,13 @@
 # Orientation for the next agent
 
+**Repository update (27 September 2026):** this is now the standalone
+`Darkamui/aluminium-electrolysis-cell-3d` model project. The story application
+lives separately. `viewer/index.html` is the tracked inspection-viewer template;
+`tools/embed_glb.py` generates `out/cuve400.html` from it. See `README.md`,
+`docs/REUSE.md` and `CONTRIBUTING.md` for downloads, reuse and release commands.
+The original model and generated assets are MIT licensed. Historical machine
+and delivery details below describe the initial modelling work.
+
 Read this before touching anything. It exists because most of what will bite you
 in this repository is **invisible** — silently wrong output, not an error — and
 the traps are listed in §7.

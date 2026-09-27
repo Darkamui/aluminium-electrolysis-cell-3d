@@ -11,3 +11,11 @@ __pycache__/
 # Blender backups
 *.blend1
 *.blend2
+
+# Local tooling and operating-system files
+.venv/
+.pytest_cache/
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

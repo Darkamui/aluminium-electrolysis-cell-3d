@@ -1,55 +1,46 @@
-"""
-Re-embed a GLB into the single-file web viewer.
+"""Generate the single-file viewer from tracked source and a GLB.
 
-    python tools/embed_glb.py [--glb out/cell_anim.glb] [--page out/cuve400.html]
+    python tools/embed_glb.py --glb out/cell_anim.glb --page out/cuve400.html
 
-The viewer is deliberately ONE file with the model inside it as base64, so it
-opens from the filesystem with no server and no CORS. That makes re-publishing
-after a model change a mechanical edit of one very long line, which is exactly
-the kind of edit that gets done by hand once and then never again correctly.
-
-The line is located by its `const b64 = "` prefix rather than by number, and the
-old payload is never parsed — only replaced. Nothing else in the page is touched.
+The model is embedded; Three.js and fonts still require an internet connection.
+Only Python's standard library is needed.
 """
 
 from __future__ import annotations
 
 import argparse
 import base64
-import os
+from pathlib import Path
+import struct
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT = Path(__file__).resolve().parents[1]
 PREFIX = 'const b64 = "'
 
 
-def main() -> int:
-    p = argparse.ArgumentParser(prog="embed_glb")
-    p.add_argument("--glb", default=os.path.join(ROOT, "out", "cell_anim.glb"))
-    p.add_argument("--page", default=os.path.join(ROOT, "out", "cuve400.html"))
-    args = p.parse_args()
-
-    with open(args.glb, "rb") as fh:
-        payload = base64.b64encode(fh.read()).decode("ascii")
-
-    with open(args.page, "r", encoding="utf-8") as fh:
-        lines = fh.readlines()
-
+def generate(glb: Path, template: Path, page: Path) -> None:
+    data = glb.read_bytes()
+    if len(data) < 12 or struct.unpack_from('<4sII', data) != (b'glTF', 2, len(data)):
+        raise ValueError(f"Not a valid glTF 2.0 binary header: {glb}")
+    lines = template.read_text(encoding="utf-8").splitlines(keepends=True)
     hits = [i for i, line in enumerate(lines) if line.lstrip().startswith(PREFIX)]
     if len(hits) != 1:
-        raise SystemExit(
-            f"expected exactly one {PREFIX!r} line in {args.page}, found {len(hits)}"
-        )
+        raise ValueError(f"Expected exactly one {PREFIX!r} line in {template}; found {len(hits)}")
+    if page.resolve() in (template.resolve(), glb.resolve()):
+        raise ValueError("The output page must not overwrite its template or model")
+    payload = base64.b64encode(data).decode("ascii")
+    lines[hits[0]] = f'{PREFIX}{payload}";\n'
+    page.parent.mkdir(parents=True, exist_ok=True)
+    page.write_text("".join(lines), encoding="utf-8")
 
-    index = hits[0]
-    was = len(lines[index])
-    lines[index] = f'{PREFIX}{payload}";\n'
-    with open(args.page, "w", encoding="utf-8") as fh:
-        fh.writelines(lines)
 
-    print(f"   {os.path.relpath(args.glb, ROOT)} "
-          f"({os.path.getsize(args.glb) / 1048576.0:.2f} MB) "
-          f"-> {os.path.relpath(args.page, ROOT)} line {index + 1}")
-    print(f"   payload {was} -> {len(lines[index])} chars")
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--glb", type=Path, default=ROOT / "out/cell_anim.glb")
+    parser.add_argument("--template", type=Path, default=ROOT / "viewer/index.html")
+    parser.add_argument("--page", type=Path, default=ROOT / "out/cuve400.html")
+    args = parser.parse_args()
+    generate(args.glb, args.template, args.page)
+    print(f"Generated {args.page} ({args.page.stat().st_size / 1048576:.2f} MiB)")
     return 0
 
 
